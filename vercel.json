@@ -1,6 +1,10 @@
 {
   "buildCommand": "next build",
-  "outputDirectory": ".next",
+  "outputDirectory": "out",
   "framework": "nextjs",
-  "regions": ["gru1"]
+  "regions": ["gru1"],
+  "env": {
+    "TURSO_AUTH_TOKEN": "@turso_auth_token",
+    "TURSO_DB_URL": "https://david-agendamentoembasa.aws-us-east-1.turso.io"
+  }
 }

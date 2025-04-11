@@ -1,7 +1,12 @@
 import { createClient } from "@libsql/client";
+import { env } from './env';
+
+if (!env.tursoAuthToken) {
+  throw new Error('TURSO_AUTH_TOKEN is required');
+}
 
 export const db = createClient({
   url: "file:local.db",
-  syncUrl: "https://david-agendamentoembasa.aws-us-east-1.turso.io",
-  authToken: process.env.TURSO_AUTH_TOKEN
+  syncUrl: env.tursoDbUrl,
+  authToken: env.tursoAuthToken
 });

@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { createAppointment, getAppointments, deleteAppointment } from '../../lib/db';
+import { getAppointments, createAppointment, deleteAppointment } from '../../lib/db';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   switch (req.method) {
@@ -35,7 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       try {
         const { id } = req.query;
         if (!id || typeof id !== 'string') {
-          return res.status(400).json({ error: 'ID is required' });
+          return res.status(400).json({ error: 'Appointment ID is required' });
         }
         await deleteAppointment(parseInt(id, 10));
         res.status(200).json({ message: 'Appointment deleted successfully' });
