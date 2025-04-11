@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',
+  output: 'static',
+  transpilePackages: ['@chakra-ui/react', '@emotion/react', '@emotion/styled'],
   images: {
     unoptimized: true
   }

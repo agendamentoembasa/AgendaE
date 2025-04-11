@@ -3,13 +3,7 @@ import { Box, Button, Grid, Heading, VStack, useToast } from '@chakra-ui/react';
 import { format } from 'date-fns';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
-import { 
-  Appointment, 
-  Availability, 
-  getAppointments, 
-  getAvailability, 
-  updateAvailability 
-} from '../data/appointments';
+import { Appointment, Availability } from '../lib/db';
 
 export default function EmbasaPanel() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -22,11 +16,13 @@ export default function EmbasaPanel() {
     loadAvailability();
   }, [selectedDate]);
 
-  const loadAppointments = () => {
+  const loadAppointments = async () => {
     try {
       const dateString = format(selectedDate, 'yyyy-MM-dd');
-      const apps = getAppointments(dateString);
-      setAppointments(apps);
+      const response = await fetch(`/api/appointments?date=${dateString}`);
+      if (!response.ok) throw new Error('Failed to load appointments');
+      const data = await response.json();
+      setAppointments(data);
     } catch (error) {
       console.error('Error loading appointments:', error);
       toast({
@@ -37,12 +33,14 @@ export default function EmbasaPanel() {
     }
   };
 
-  const loadAvailability = () => {
+  const loadAvailability = async () => {
     try {
       const dateString = format(selectedDate, 'yyyy-MM-dd');
-      const slots = getAvailability(dateString);
+      const response = await fetch(`/api/availability?date=${dateString}`);
+      if (!response.ok) throw new Error('Failed to load availability');
+      const data = await response.json();
       const availabilityData: {[key: string]: boolean} = {};
-      slots.forEach((slot) => {
+      data.forEach((slot: Availability) => {
         const slotKey = `${slot.date}-${slot.period}-${slot.slot}`;
         availabilityData[slotKey] = slot.available;
       });
@@ -57,19 +55,24 @@ export default function EmbasaPanel() {
     }
   };
 
-  const toggleAvailability = (period: 'morning' | 'afternoon', slot: 'first' | 'second') => {
+  const toggleAvailability = async (period: 'morning' | 'afternoon', slot: 'first' | 'second') => {
     const dateString = format(selectedDate, 'yyyy-MM-dd');
     const slotKey = `${dateString}-${period}-${slot}`;
     const isCurrentlyAvailable = availabilityMap[slotKey];
 
     try {
-      const availability: Availability = {
-        date: dateString,
-        period,
-        slot,
-        available: !isCurrentlyAvailable
-      };
-      updateAvailability(availability);
+      const response = await fetch('/api/availability', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: dateString,
+          period,
+          slot,
+          available: !isCurrentlyAvailable
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to update availability');
 
       setAvailabilityMap(prev => ({
         ...prev,

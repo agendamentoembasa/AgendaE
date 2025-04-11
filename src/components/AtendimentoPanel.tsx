@@ -22,7 +22,7 @@ import {
 import { format } from 'date-fns';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
-import { Appointment, Availability, getAppointments, createAppointment, deleteAppointment, getAvailability } from '../data/appointments';
+import { Availability, Appointment } from '../lib/db';
 
 export default function AtendimentoPanel() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -39,11 +39,13 @@ export default function AtendimentoPanel() {
     loadAppointments();
   }, [selectedDate]);
 
-  const loadAvailability = () => {
+  const loadAvailability = async () => {
     try {
       const dateString = format(selectedDate, 'yyyy-MM-dd');
-      const slots = getAvailability(dateString);
-      setAvailableSlots(slots.filter(slot => slot.available));
+      const response = await fetch(`/api/availability?date=${dateString}`);
+      if (!response.ok) throw new Error('Failed to load availability');
+      const data = await response.json();
+      setAvailableSlots(data.filter((slot: Availability) => slot.available));
     } catch (error) {
       console.error('Error loading availability:', error);
       toast({
@@ -54,11 +56,13 @@ export default function AtendimentoPanel() {
     }
   };
 
-  const loadAppointments = () => {
+  const loadAppointments = async () => {
     try {
       const dateString = format(selectedDate, 'yyyy-MM-dd');
-      const apps = getAppointments(dateString);
-      setAppointments(apps);
+      const response = await fetch(`/api/appointments?date=${dateString}`);
+      if (!response.ok) throw new Error('Failed to load appointments');
+      const data = await response.json();
+      setAppointments(data);
     } catch (error) {
       console.error('Error loading appointments:', error);
       toast({
@@ -69,17 +73,23 @@ export default function AtendimentoPanel() {
     }
   };
 
-  const handleSchedule = () => {
+  const handleSchedule = async () => {
     if (!selectedSlot || !ss) return;
 
     try {
-      const appointment = createAppointment({
-        date: selectedSlot.date!,
-        period: selectedSlot.period!,
-        slot: selectedSlot.slot!,
-        ss,
-        comments
+      const response = await fetch('/api/appointments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: selectedSlot.date,
+          period: selectedSlot.period,
+          slot: selectedSlot.slot,
+          ss,
+          comments
+        })
       });
+
+      if (!response.ok) throw new Error('Failed to schedule appointment');
       
       toast({
         title: 'Appointment scheduled successfully',
@@ -91,7 +101,7 @@ export default function AtendimentoPanel() {
       setSs('');
       setComments('');
       setSelectedSlot(null);
-      loadAppointments();
+      await loadAppointments();
     } catch (error) {
       toast({
         title: 'Error scheduling appointment',
@@ -101,15 +111,20 @@ export default function AtendimentoPanel() {
     }
   };
 
-  const handleCancelAppointment = (appointment: Appointment) => {
+  const handleCancelAppointment = async (appointment: Appointment) => {
     try {
-      deleteAppointment(appointment.id);
+      const response = await fetch(`/api/appointments?id=${appointment.id}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) throw new Error('Failed to cancel appointment');
+
       toast({
         title: 'Appointment cancelled successfully',
         status: 'success',
         duration: 3000,
       });
-      loadAppointments();
+      await loadAppointments();
     } catch (error) {
       toast({
         title: 'Error cancelling appointment',

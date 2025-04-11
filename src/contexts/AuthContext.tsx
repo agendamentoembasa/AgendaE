@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { User, UserRole, getAllUsers, AUTH_TOKEN_KEY, initializeUsers } from '../data/users';
 import { useToast } from '@chakra-ui/react';
+import { User, UserRole } from '../lib/db';
 
 interface AuthContextType {
   user: User | null;
@@ -17,29 +17,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const toast = useToast();
 
   useEffect(() => {
-    initializeUsers();
-    const token = localStorage.getItem(AUTH_TOKEN_KEY);
-    if (token) {
-      const users = getAllUsers();
-      const foundUser = users.find(u => u.email === token);
-      if (foundUser) {
-        setUser(foundUser);
-      }
+    // Check for stored authentication
+    const storedUser = localStorage.getItem('auth_user');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
     }
     setLoading(false);
   }, []);
 
   const login = async (email: string, password: string) => {
     try {
-      const users = getAllUsers();
-      const user = users.find(u => u.email === email && u.password === password);
-      
-      if (!user) {
-        throw new Error('Invalid credentials');
+      const response = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Login failed');
       }
 
-      setUser(user);
-      localStorage.setItem(AUTH_TOKEN_KEY, user.email);
+      const userData = await response.json();
+      setUser(userData);
+      localStorage.setItem('auth_user', JSON.stringify(userData));
       
       toast({
         title: 'Login successful',
@@ -59,7 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem(AUTH_TOKEN_KEY);
+    localStorage.removeItem('auth_user');
   };
 
   return (

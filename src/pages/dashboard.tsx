@@ -1,31 +1,40 @@
-import { useEffect } from 'react';
-import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
-import { Box, Container } from '@chakra-ui/react';
-import AtendimentoPanel from '../components/AtendimentoPanel';
+import { useRouter } from 'next/router';
+import { useEffect } from 'react';
+import { Box, Container, Heading, Button } from '@chakra-ui/react';
 import EmbasaPanel from '../components/EmbasaPanel';
+import AtendimentoPanel from '../components/AtendimentoPanel';
 
 export default function Dashboard() {
-  const { user, loading } = useAuth();
+  const { user, logout } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!user) {
       router.push('/');
     }
-  }, [user, loading, router]);
+  }, [user, router]);
 
-  if (loading || !user) {
-    return <Box p={8}>Carregando...</Box>;
+  if (!user?.role) {
+    return null;
   }
 
   return (
     <Container maxW="container.xl" py={8}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={8}>
+        <Heading size="lg">
+          Painel de {user.role === 'EMBASA' ? 'EMBASA' : 'Atendimento'}
+        </Heading>
+        <Button onClick={logout} colorScheme="gray">
+          Sair
+        </Button>
+      </Box>
+
       {user.role === 'EMBASA' ? (
         <EmbasaPanel />
-      ) : user.role === 'ATENDIMENTO' ? (
+      ) : (
         <AtendimentoPanel />
-      ) : null}
+      )}
     </Container>
   );
 }
