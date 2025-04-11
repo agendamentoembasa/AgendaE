@@ -24,6 +24,7 @@ export default function EmbasaPanel() {
 
   useEffect(() => {
     loadAppointments();
+    loadAvailability();
   }, [selectedDate]);
 
   const loadAppointments = async () => {
@@ -39,6 +40,23 @@ export default function EmbasaPanel() {
       apps.push({ id: doc.id, ...doc.data() } as Appointment);
     });
     setAppointments(apps);
+  };
+
+  const loadAvailability = async () => {
+    const dateString = format(selectedDate, 'yyyy-MM-dd');
+    const q = query(
+      collection(db, 'availability'),
+      where('date', '==', dateString)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    const availabilityData: {[key: string]: boolean} = {};
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      const slotKey = `${data.date}-${data.period}-${data.slot}`;
+      availabilityData[slotKey] = data.available;
+    });
+    setAvailabilityMap(availabilityData);
   };
 
   const toggleAvailability = async (period: 'morning' | 'afternoon', slot: 'first' | 'second') => {

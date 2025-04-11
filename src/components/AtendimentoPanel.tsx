@@ -58,36 +58,58 @@ export default function AtendimentoPanel() {
   }, [selectedDate]);
 
   const loadAvailability = async () => {
-    const dateString = format(selectedDate, 'yyyy-MM-dd');
-    const q = query(
-      collection(db, 'availability'),
-      where('date', '==', dateString)
-    );
-    
-    const querySnapshot = await getDocs(q);
-    const slots: Availability[] = [];
-    querySnapshot.forEach((doc) => {
-      const data = doc.data() as Availability;
-      if (data.available) {
-        slots.push(data);
+    try {
+      const dateString = format(selectedDate, 'yyyy-MM-dd');
+      const q = query(
+        collection(db, 'availability'),
+        where('date', '==', dateString),
+        where('available', '==', true)
+      );
+      
+      const querySnapshot = await getDocs(q);
+      const slots: Availability[] = [];
+      querySnapshot.forEach((doc) => {
+        slots.push(doc.data() as Availability);
+      });
+      setAvailableSlots(slots);
+    } catch (error: any) {
+      console.error('Erro ao carregar disponibilidade:', error);
+      if (error.code === 'failed-precondition' || error.code === 'unavailable') {
+        toast({
+          title: 'Erro de conexão',
+          description: 'Verifique sua conexão com a internet',
+          status: 'error',
+          duration: 5000,
+        });
       }
-    });
-    setAvailableSlots(slots);
+    }
   };
 
   const loadAppointments = async () => {
-    const dateString = format(selectedDate, 'yyyy-MM-dd');
-    const q = query(
-      collection(db, 'appointments'),
-      where('date', '==', dateString)
-    );
-    
-    const querySnapshot = await getDocs(q);
-    const apps: Appointment[] = [];
-    querySnapshot.forEach((doc) => {
-      apps.push({ id: doc.id, ...doc.data() } as Appointment);
-    });
-    setAppointments(apps);
+    try {
+      const dateString = format(selectedDate, 'yyyy-MM-dd');
+      const q = query(
+        collection(db, 'appointments'),
+        where('date', '==', dateString)
+      );
+      
+      const querySnapshot = await getDocs(q);
+      const apps: Appointment[] = [];
+      querySnapshot.forEach((doc) => {
+        apps.push({ id: doc.id, ...doc.data() } as Appointment);
+      });
+      setAppointments(apps);
+    } catch (error: any) {
+      console.error('Erro ao carregar agendamentos:', error);
+      if (error.code === 'failed-precondition' || error.code === 'unavailable') {
+        toast({
+          title: 'Erro de conexão',
+          description: 'Verifique sua conexão com a internet',
+          status: 'error',
+          duration: 5000,
+        });
+      }
+    }
   };
 
   const handleSchedule = async () => {
