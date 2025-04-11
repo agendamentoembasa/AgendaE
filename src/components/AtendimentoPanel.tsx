@@ -18,11 +18,21 @@ import {
   FormControl,
   FormLabel,
   FormErrorMessage,
+  useColorModeValue,
+  Card,
+  CardBody,
+  Badge,
+  HStack,
+  Text,
+  Icon,
 } from '@chakra-ui/react';
 import { format } from 'date-fns';
+import ptBR from 'date-fns/locale/pt-BR';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import { Availability, Appointment } from '../lib/db';
+import LoadingSpinner from './LoadingSpinner';
+import { CheckIcon, CloseIcon, CalendarIcon } from '@chakra-ui/icons';
 
 export default function AtendimentoPanel() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -31,25 +41,38 @@ export default function AtendimentoPanel() {
   const [selectedSlot, setSelectedSlot] = useState<Partial<Appointment> | null>(null);
   const [ss, setSs] = useState('');
   const [comments, setComments] = useState('');
+  const [loading, setLoading] = useState(true);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const toast = useToast();
 
+  const bgColor = useColorModeValue('gray.50', 'gray.900');
+  const cardBgColor = useColorModeValue('white', 'gray.800');
+
   useEffect(() => {
-    loadAvailability();
-    loadAppointments();
+    loadData();
   }, [selectedDate]);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      await Promise.all([loadAvailability(), loadAppointments()]);
+    } catch (error) {
+      console.error('Error loading data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadAvailability = async () => {
     try {
       const dateString = format(selectedDate, 'yyyy-MM-dd');
       const response = await fetch(`/api/availability?date=${dateString}`);
-      if (!response.ok) throw new Error('Failed to load availability');
+      if (!response.ok) throw new Error('Falha ao carregar disponibilidade');
       const data = await response.json();
       setAvailableSlots(data.filter((slot: Availability) => slot.available));
     } catch (error) {
-      console.error('Error loading availability:', error);
       toast({
-        title: 'Error loading availability',
+        title: 'Erro ao carregar disponibilidade',
         status: 'error',
         duration: 3000,
       });
@@ -60,13 +83,12 @@ export default function AtendimentoPanel() {
     try {
       const dateString = format(selectedDate, 'yyyy-MM-dd');
       const response = await fetch(`/api/appointments?date=${dateString}`);
-      if (!response.ok) throw new Error('Failed to load appointments');
+      if (!response.ok) throw new Error('Falha ao carregar agendamentos');
       const data = await response.json();
       setAppointments(data);
     } catch (error) {
-      console.error('Error loading appointments:', error);
       toast({
-        title: 'Error loading appointments',
+        title: 'Erro ao carregar agendamentos',
         status: 'error',
         duration: 3000,
       });
@@ -89,10 +111,10 @@ export default function AtendimentoPanel() {
         })
       });
 
-      if (!response.ok) throw new Error('Failed to schedule appointment');
+      if (!response.ok) throw new Error('Falha ao agendar horário');
       
       toast({
-        title: 'Appointment scheduled successfully',
+        title: 'Agendamento realizado com sucesso',
         status: 'success',
         duration: 3000,
       });
@@ -101,10 +123,10 @@ export default function AtendimentoPanel() {
       setSs('');
       setComments('');
       setSelectedSlot(null);
-      await loadAppointments();
+      await loadData();
     } catch (error) {
       toast({
-        title: 'Error scheduling appointment',
+        title: 'Erro ao realizar agendamento',
         status: 'error',
         duration: 3000,
       });
@@ -117,17 +139,17 @@ export default function AtendimentoPanel() {
         method: 'DELETE'
       });
 
-      if (!response.ok) throw new Error('Failed to cancel appointment');
+      if (!response.ok) throw new Error('Falha ao cancelar agendamento');
 
       toast({
-        title: 'Appointment cancelled successfully',
+        title: 'Agendamento cancelado com sucesso',
         status: 'success',
         duration: 3000,
       });
-      await loadAppointments();
+      await loadData();
     } catch (error) {
       toast({
-        title: 'Error cancelling appointment',
+        title: 'Erro ao cancelar agendamento',
         status: 'error',
         duration: 3000,
       });
@@ -149,58 +171,111 @@ export default function AtendimentoPanel() {
       app => app.period === period && app.slot === slot
     );
 
+    const periodLabel = period === 'morning' ? 'Manhã' : 'Tarde';
+    const slotLabel = slot === 'first' ? '1º horário' : '2º horário';
+
     return (
-      <Box p={4} borderWidth={1} borderRadius="md">
-        <VStack align="start" spacing={2}>
-          <Heading size="sm">
-            {period === 'morning' ? 'Manhã' : 'Tarde'} - {slot === 'first' ? '1º' : '2º'} horário
-          </Heading>
-          {appointment ? (
-            <VStack align="start" w="100%">
-              <Box>
-                <p>SS: {appointment.ss}</p>
-                {appointment.comments && <p>Obs: {appointment.comments}</p>}
-              </Box>
-              <Button
-                colorScheme="red"
-                size="sm"
-                onClick={() => handleCancelAppointment(appointment)}
+      <Card bg={cardBgColor} shadow="sm">
+        <CardBody>
+          <VStack align="start" spacing={3}>
+            <HStack justify="space-between" w="full">
+              <Heading size="sm">
+                {periodLabel} - {slotLabel}
+              </Heading>
+              <Badge 
+                colorScheme={isAvailable ? 'green' : appointment ? 'blue' : 'gray'}
+                display="flex"
+                alignItems="center"
               >
-                Cancelar Agendamento
+                <Icon 
+                  as={isAvailable ? CheckIcon : appointment ? CalendarIcon : CloseIcon} 
+                  mr={1} 
+                />
+                {isAvailable ? 'Disponível' : appointment ? 'Agendado' : 'Indisponível'}
+              </Badge>
+            </HStack>
+
+            {appointment ? (
+              <VStack align="start" spacing={2} w="full">
+                <Box 
+                  p={3} 
+                  bg={useColorModeValue('gray.50', 'gray.700')} 
+                  rounded="md"
+                  w="full"
+                >
+                  <VStack align="start" spacing={1}>
+                    <Text fontWeight="medium">
+                      SS: {appointment.ss}
+                    </Text>
+                    {appointment.comments && (
+                      <Text fontSize="sm" color="gray.600">
+                        Obs: {appointment.comments}
+                      </Text>
+                    )}
+                  </VStack>
+                </Box>
+                <Button
+                  colorScheme="red"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleCancelAppointment(appointment)}
+                  w="full"
+                >
+                  Cancelar Agendamento
+                </Button>
+              </VStack>
+            ) : (
+              <Button
+                colorScheme={isAvailable ? 'blue' : 'gray'}
+                size="sm"
+                isDisabled={!isAvailable}
+                onClick={() => {
+                  setSelectedSlot({
+                    date: dateString,
+                    period,
+                    slot
+                  });
+                  onOpen();
+                }}
+                w="full"
+              >
+                {isAvailable ? 'Agendar Horário' : 'Indisponível'}
               </Button>
-            </VStack>
-          ) : (
-            <Button
-              colorScheme={isAvailable ? 'green' : 'gray'}
-              isDisabled={!isAvailable}
-              onClick={() => {
-                setSelectedSlot({
-                  date: dateString,
-                  period,
-                  slot
-                });
-                onOpen();
-              }}
-            >
-              {isAvailable ? 'Agendar' : 'Indisponível'}
-            </Button>
-          )}
-        </VStack>
-      </Box>
+            )}
+          </VStack>
+        </CardBody>
+      </Card>
     );
   };
 
+  if (loading) {
+    return <LoadingSpinner message="Carregando horários..." />;
+  }
+
   return (
     <>
-      <Grid templateColumns={{ base: '1fr', md: '300px 1fr' }} gap={8}>
+      <Grid 
+        templateColumns={{ base: '1fr', md: 'auto 1fr' }} 
+        gap={8}
+        alignItems="start"
+      >
         <Box>
-          <Calendar
-            onChange={handleDateChange}
-            value={selectedDate}
-            locale="pt-BR"
-          />
+          <Card bg={cardBgColor} shadow="sm">
+            <CardBody>
+              <Calendar
+                onChange={handleDateChange}
+                value={selectedDate}
+                locale={ptBR}
+                className="rounded-calendar"
+              />
+            </CardBody>
+          </Card>
         </Box>
-        <Grid templateColumns="repeat(2, 1fr)" gap={4}>
+        
+        <Grid 
+          templateColumns={{ base: '1fr', lg: 'repeat(2, 1fr)' }}
+          gap={4}
+        >
           {renderTimeSlot('morning', 'first')}
           {renderTimeSlot('morning', 'second')}
           {renderTimeSlot('afternoon', 'first')}
@@ -221,7 +296,9 @@ export default function AtendimentoPanel() {
                   onChange={(e) => setSs(e.target.value)}
                   placeholder="Digite o número da SS"
                 />
-                {!ss && <FormErrorMessage>SS é obrigatória</FormErrorMessage>}
+                {!ss && (
+                  <FormErrorMessage>SS é obrigatória</FormErrorMessage>
+                )}
               </FormControl>
               <FormControl>
                 <FormLabel>Comentários (opcional)</FormLabel>
