@@ -25,7 +25,8 @@ interface User {
 
 // Lista de admins que podem acessar esta página
 const ADMIN_EMAILS = [
-  // Adicione aqui os emails dos administradores
+  "agendamentoembasa@gmail.com",
+  "davosalm@gmail.com"
 ];
 
 export default function AdminPage() {
