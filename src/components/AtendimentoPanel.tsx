@@ -19,28 +19,10 @@ import {
   FormLabel,
   FormErrorMessage,
 } from '@chakra-ui/react';
-import { db } from '../config/firebase';
-import { collection, doc, setDoc, getDocs, query, where, deleteDoc } from 'firebase/firestore';
 import { format } from 'date-fns';
-import ptBR from 'date-fns/locale/pt-BR';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
-
-interface Availability {
-  date: string;
-  period: 'morning' | 'afternoon';
-  slot: 'first' | 'second';
-  available: boolean;
-}
-
-interface Appointment {
-  id?: string;
-  date: string;
-  period: 'morning' | 'afternoon';
-  slot: 'first' | 'second';
-  ss: string;
-  comments?: string;
-}
+import { Appointment, Availability, getAppointments, createAppointment, deleteAppointment, getAvailability } from '../data/appointments';
 
 export default function AtendimentoPanel() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -57,78 +39,50 @@ export default function AtendimentoPanel() {
     loadAppointments();
   }, [selectedDate]);
 
-  const loadAvailability = async () => {
+  const loadAvailability = () => {
     try {
       const dateString = format(selectedDate, 'yyyy-MM-dd');
-      const q = query(
-        collection(db, 'availability'),
-        where('date', '==', dateString),
-        where('available', '==', true)
-      );
-      
-      const querySnapshot = await getDocs(q);
-      const slots: Availability[] = [];
-      querySnapshot.forEach((doc) => {
-        slots.push(doc.data() as Availability);
+      const slots = getAvailability(dateString);
+      setAvailableSlots(slots.filter(slot => slot.available));
+    } catch (error) {
+      console.error('Error loading availability:', error);
+      toast({
+        title: 'Error loading availability',
+        status: 'error',
+        duration: 3000,
       });
-      setAvailableSlots(slots);
-    } catch (error: any) {
-      console.error('Erro ao carregar disponibilidade:', error);
-      if (error.code === 'failed-precondition' || error.code === 'unavailable') {
-        toast({
-          title: 'Erro de conexão',
-          description: 'Verifique sua conexão com a internet',
-          status: 'error',
-          duration: 5000,
-        });
-      }
     }
   };
 
-  const loadAppointments = async () => {
+  const loadAppointments = () => {
     try {
       const dateString = format(selectedDate, 'yyyy-MM-dd');
-      const q = query(
-        collection(db, 'appointments'),
-        where('date', '==', dateString)
-      );
-      
-      const querySnapshot = await getDocs(q);
-      const apps: Appointment[] = [];
-      querySnapshot.forEach((doc) => {
-        apps.push({ id: doc.id, ...doc.data() } as Appointment);
-      });
+      const apps = getAppointments(dateString);
       setAppointments(apps);
-    } catch (error: any) {
-      console.error('Erro ao carregar agendamentos:', error);
-      if (error.code === 'failed-precondition' || error.code === 'unavailable') {
-        toast({
-          title: 'Erro de conexão',
-          description: 'Verifique sua conexão com a internet',
-          status: 'error',
-          duration: 5000,
-        });
-      }
+    } catch (error) {
+      console.error('Error loading appointments:', error);
+      toast({
+        title: 'Error loading appointments',
+        status: 'error',
+        duration: 3000,
+      });
     }
   };
 
-  const handleSchedule = async () => {
+  const handleSchedule = () => {
     if (!selectedSlot || !ss) return;
 
-    const appointment: Appointment = {
-      date: selectedSlot.date!,
-      period: selectedSlot.period!,
-      slot: selectedSlot.slot!,
-      ss,
-      comments
-    };
-
     try {
-      const appointmentRef = doc(collection(db, 'appointments'));
-      await setDoc(appointmentRef, appointment);
+      const appointment = createAppointment({
+        date: selectedSlot.date!,
+        period: selectedSlot.period!,
+        slot: selectedSlot.slot!,
+        ss,
+        comments
+      });
       
       toast({
-        title: 'Agendamento realizado com sucesso',
+        title: 'Appointment scheduled successfully',
         status: 'success',
         duration: 3000,
       });
@@ -138,30 +92,27 @@ export default function AtendimentoPanel() {
       setComments('');
       setSelectedSlot(null);
       loadAppointments();
-      loadAvailability();
     } catch (error) {
       toast({
-        title: 'Erro ao realizar agendamento',
+        title: 'Error scheduling appointment',
         status: 'error',
         duration: 3000,
       });
     }
   };
 
-  const handleCancelAppointment = async (appointment: Appointment) => {
-    if (!appointment.id) return;
-
+  const handleCancelAppointment = (appointment: Appointment) => {
     try {
-      await deleteDoc(doc(db, 'appointments', appointment.id));
+      deleteAppointment(appointment.id);
       toast({
-        title: 'Agendamento cancelado com sucesso',
+        title: 'Appointment cancelled successfully',
         status: 'success',
         duration: 3000,
       });
       loadAppointments();
     } catch (error) {
       toast({
-        title: 'Erro ao cancelar agendamento',
+        title: 'Error cancelling appointment',
         status: 'error',
         duration: 3000,
       });

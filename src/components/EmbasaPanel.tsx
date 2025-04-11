@@ -1,20 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Box, Button, Grid, Heading, VStack, useToast } from '@chakra-ui/react';
-import { db } from '../config/firebase';
-import { collection, doc, setDoc, getDocs, query, where } from 'firebase/firestore';
 import { format } from 'date-fns';
-import ptBR from 'date-fns/locale/pt-BR';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
-
-interface Appointment {
-  id: string;
-  date: string;
-  period: 'morning' | 'afternoon';
-  slot: 'first' | 'second';
-  ss?: string;
-  comments?: string;
-}
+import { 
+  Appointment, 
+  Availability, 
+  getAppointments, 
+  getAvailability, 
+  updateAvailability 
+} from '../data/appointments';
 
 export default function EmbasaPanel() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -27,50 +22,54 @@ export default function EmbasaPanel() {
     loadAvailability();
   }, [selectedDate]);
 
-  const loadAppointments = async () => {
-    const dateString = format(selectedDate, 'yyyy-MM-dd');
-    const q = query(
-      collection(db, 'appointments'),
-      where('date', '==', dateString)
-    );
-    
-    const querySnapshot = await getDocs(q);
-    const apps: Appointment[] = [];
-    querySnapshot.forEach((doc) => {
-      apps.push({ id: doc.id, ...doc.data() } as Appointment);
-    });
-    setAppointments(apps);
+  const loadAppointments = () => {
+    try {
+      const dateString = format(selectedDate, 'yyyy-MM-dd');
+      const apps = getAppointments(dateString);
+      setAppointments(apps);
+    } catch (error) {
+      console.error('Error loading appointments:', error);
+      toast({
+        title: 'Error loading appointments',
+        status: 'error',
+        duration: 3000,
+      });
+    }
   };
 
-  const loadAvailability = async () => {
-    const dateString = format(selectedDate, 'yyyy-MM-dd');
-    const q = query(
-      collection(db, 'availability'),
-      where('date', '==', dateString)
-    );
-    
-    const querySnapshot = await getDocs(q);
-    const availabilityData: {[key: string]: boolean} = {};
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      const slotKey = `${data.date}-${data.period}-${data.slot}`;
-      availabilityData[slotKey] = data.available;
-    });
-    setAvailabilityMap(availabilityData);
+  const loadAvailability = () => {
+    try {
+      const dateString = format(selectedDate, 'yyyy-MM-dd');
+      const slots = getAvailability(dateString);
+      const availabilityData: {[key: string]: boolean} = {};
+      slots.forEach((slot) => {
+        const slotKey = `${slot.date}-${slot.period}-${slot.slot}`;
+        availabilityData[slotKey] = slot.available;
+      });
+      setAvailabilityMap(availabilityData);
+    } catch (error) {
+      console.error('Error loading availability:', error);
+      toast({
+        title: 'Error loading availability',
+        status: 'error',
+        duration: 3000,
+      });
+    }
   };
 
-  const toggleAvailability = async (period: 'morning' | 'afternoon', slot: 'first' | 'second') => {
+  const toggleAvailability = (period: 'morning' | 'afternoon', slot: 'first' | 'second') => {
     const dateString = format(selectedDate, 'yyyy-MM-dd');
     const slotKey = `${dateString}-${period}-${slot}`;
     const isCurrentlyAvailable = availabilityMap[slotKey];
 
     try {
-      await setDoc(doc(db, 'availability', slotKey), {
+      const availability: Availability = {
         date: dateString,
         period,
         slot,
         available: !isCurrentlyAvailable
-      });
+      };
+      updateAvailability(availability);
 
       setAvailabilityMap(prev => ({
         ...prev,
@@ -78,13 +77,13 @@ export default function EmbasaPanel() {
       }));
 
       toast({
-        title: 'Disponibilidade atualizada',
+        title: 'Availability updated successfully',
         status: 'success',
         duration: 3000,
       });
     } catch (error) {
       toast({
-        title: 'Erro ao atualizar disponibilidade',
+        title: 'Error updating availability',
         status: 'error',
         duration: 3000,
       });
