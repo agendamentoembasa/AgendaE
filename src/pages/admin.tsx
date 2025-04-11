@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useRouter } from 'next/router';
 import {
@@ -31,15 +31,19 @@ import { getAllUsers, addUser, updateUserRole, UserRole } from '../data/users';
 export default function AdminPage() {
   const { user } = useAuth();
   const router = useRouter();
-  const [users, setUsers] = useState(getAllUsers());
+  const [users, setUsers] = useState<any[]>([]);
   const toast = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [newUser, setNewUser] = useState({ email: '', password: '', role: 'ATENDIMENTO' as UserRole });
 
-  if (!user || user.role !== 'ADMIN') {
-    router.push('/');
-    return null;
-  }
+  useEffect(() => {
+    // Check auth and load users only on client side
+    if (!user || user.role !== 'ADMIN') {
+      router.push('/');
+    } else {
+      setUsers(getAllUsers());
+    }
+  }, [user, router]);
 
   const handleRoleChange = (email: string, newRole: UserRole) => {
     try {
@@ -79,6 +83,10 @@ export default function AdminPage() {
       });
     }
   };
+
+  if (!user || user.role !== 'ADMIN') {
+    return null;
+  }
 
   return (
     <Container maxW="container.xl" py={8}>
