@@ -73,6 +73,12 @@ export default function EmbasaPanel() {
     }
   };
 
+  const handleDateChange = (value: Date | Date[]) => {
+    if (value instanceof Date) {
+      setSelectedDate(value);
+    }
+  };
+
   const renderTimeSlot = (period: 'morning' | 'afternoon', slot: 'first' | 'second') => {
     const dateString = format(selectedDate, 'yyyy-MM-dd');
     const slotKey = `${dateString}-${period}-${slot}`;
@@ -108,9 +114,9 @@ export default function EmbasaPanel() {
     <Grid templateColumns={{ base: '1fr', md: '300px 1fr' }} gap={8}>
       <Box>
         <Calendar
-          onChange={setSelectedDate}
+          onChange={handleDateChange}
           value={selectedDate}
-          locale={ptBR}
+          locale="pt-BR"
         />
       </Box>
       <Grid templateColumns="repeat(2, 1fr)" gap={4}>
