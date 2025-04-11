@@ -6,19 +6,22 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "init-db": "tsx scripts/init-db.ts"
   },
   "dependencies": {
     "@chakra-ui/react": "^2.8.2",
     "@emotion/react": "^11.11.3",
     "@emotion/styled": "^11.11.0",
-    "@libsql/client": "^0.15.3",
+    "@libsql/client": "^0.5.1",
     "date-fns": "^3.3.1",
+    "firebase": "^10.7.2",
     "framer-motion": "^11.0.3",
     "next": "14.1.0",
     "react": "^18.2.0",
     "react-calendar": "^4.8.0",
     "react-dom": "^18.2.0",
+    "tsx": "^4.19.3",
     "typescript": "^5.3.3"
   },
   "devDependencies": {
@@ -27,7 +30,9 @@
     "@types/react-calendar": "^4.1.0",
     "@types/react-dom": "^18.2.18",
     "autoprefixer": "^10.4.17",
+    "css-loader": "^7.1.2",
     "postcss": "^8.4.33",
+    "style-loader": "^4.0.0",
     "tailwindcss": "^3.4.1"
   }
 }
